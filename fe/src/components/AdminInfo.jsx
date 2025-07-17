@@ -78,9 +78,7 @@ function AdminInfo() {
     }
 
     api
-      .get("/user/info", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      .get("/user/info")
       .then((response) => setUserInfo(response.data))
       .catch((error) => {
         if (error.response?.status === 403) {
