@@ -12,11 +12,16 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class UserController {
 
     private final UserRepository userRepository;
+
+    @GetMapping("/")
+    public String index() {
+        return "forward:/index.html";
+    }
 
     @GetMapping("/user/info")
     public ResponseEntity<User> getUserInfo() {
