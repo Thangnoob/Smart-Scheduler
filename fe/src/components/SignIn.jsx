@@ -196,10 +196,12 @@ function SignIn() {
       const role = userInfoResponse.data.role;
 
       notify("Đăng nhập thành công!", "success");
+      console.log(userInfoResponse.data);
 
       setTimeout(() => {
         if (role === "ADMIN") navigate("/admin/dashboard", { replace: true });
-        else if (role === "USER") navigate("/user/info", { replace: true });
+        else if (role === "USER")
+          navigate("/user/dashboard", { replace: true });
         else setMessage("Unknown role");
       }, 1000);
     } catch (error) {

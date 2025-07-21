@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useForm } from "react-hook-form";
+
 const Wrapper = styled.div`
   display: flex;
   min-height: 100vh;
@@ -190,6 +191,7 @@ const schema = yup.object().shape({
     .min(8, "Mật khẩu phải ít nhất 8 ký tự")
     .required("Vui lòng nhập mật khẩu"),
 });
+
 function SignUp() {
   const [message, setMessage] = useState("");
 

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { BarChart2, BookOpen, Calendar, Star, Menu } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
 
 export default function Navbar() {
@@ -9,7 +9,7 @@ export default function Navbar() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   return (
-    <nav className="bg-white dark:bg-gray-900 dark:text-white shadow px-4 py-3 flex items-center justify-between">
+    <nav className="bg-white shadow px-4 py-3 flex items-center justify-between">
       {/* Left side */}
       <div className="flex items-center space-x-8">
         <div className="flex items-center space-x-2">
@@ -32,22 +32,60 @@ export default function Navbar() {
         </div>
 
         <div className="hidden md:flex space-x-6 text-sm items-center">
-          <a href="#" className="flex items-center text-violet-600 font-medium">
+          <NavLink
+            to="/user/dashboard"
+            className={({ isActive }) =>
+              `flex items-center ${
+                isActive
+                  ? "text-violet-600 font-medium"
+                  : "hover:text-violet-600"
+              }`
+            }
+          >
             <BarChart2 className="w-4 h-4 mr-1" />
             Tổng quan
-          </a>
-          <a href="#" className="flex items-center hover:text-violet-600">
+          </NavLink>
+          <NavLink
+            to="/user/subjects"
+            className={({ isActive }) =>
+              `flex items-center ${
+                isActive
+                  ? "text-violet-600 font-medium"
+                  : "hover:text-violet-600"
+              }`
+            }
+          >
             <BookOpen className="w-4 h-4 mr-1" />
             Môn học
-          </a>
-          <a href="#" className="flex items-center hover:text-violet-600">
+          </NavLink>
+
+          <NavLink
+            to="/user/schedule"
+            className={({ isActive }) =>
+              `flex items-center ${
+                isActive
+                  ? "text-violet-600 font-medium"
+                  : "hover:text-violet-600"
+              }`
+            }
+          >
             <Calendar className="w-4 h-4 mr-1" />
             Lịch học
-          </a>
-          <a href="#" className="flex items-center hover:text-violet-600">
+          </NavLink>
+
+          <NavLink
+            to="/user/analytics"
+            className={({ isActive }) =>
+              `flex items-center ${
+                isActive
+                  ? "text-violet-600 font-medium"
+                  : "hover:text-violet-600"
+              }`
+            }
+          >
             <BarChart2 className="w-4 h-4 mr-1" />
             Phân tích
-          </a>
+          </NavLink>
         </div>
       </div>
 
@@ -55,7 +93,7 @@ export default function Navbar() {
       <div className="flex items-center space-x-4">
         <div className="flex items-center text-yellow-500">
           <Star className="w-5 h-5" />
-          <span className="ml-1 text-sm text-black dark:text-white">0</span>
+          <span className="ml-1 text-sm text-black ">0</span>
         </div>
 
         {!user ? (
@@ -77,27 +115,89 @@ export default function Navbar() {
               <span className="text-sm font-medium">{user.name}</span>
             </button>
             {dropdownOpen && (
-              <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-gray-800 border dark:border-gray-600 rounded shadow-md z-50">
+              <div className="absolute right-0 mt-2 w-40 bg-white rounded shadow-md z-50">
                 <Link
                   to={user.role === "ADMIN" ? "/admin/info" : "/user/info"}
-                  className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="block px-4 py-2 text-sm hover:bg-gray-100 "
                 >
                   Hồ sơ
                 </Link>
                 <a
                   href="#"
-                  className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="block px-4 py-2 text-sm hover:bg-gray-100 "
                 >
                   Cài đặt
                 </a>
                 <button
                   onClick={logout}
-                  className="block px-4 py-2 text-sm text-red-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="block px-4 py-2 text-sm text-red-500 hover:bg-gray-100 "
                 >
                   Đăng xuất
                 </button>
               </div>
             )}
+          </div>
+        )}
+        {menuOpen && (
+          <div className="fixed top-[64px] left-0 w-full bg-white shadow-md md:hidden z-40">
+            <div className="flex flex-col p-4 space-y-2">
+              <NavLink
+                to="/user/dashboard"
+                className={({ isActive }) =>
+                  `flex items-center ${
+                    isActive
+                      ? "text-violet-600 font-medium"
+                      : "hover:text-violet-600"
+                  }`
+                }
+                onClick={() => setMenuOpen(false)}
+              >
+                <BarChart2 className="w-4 h-4 mr-1" />
+                Tổng quan
+              </NavLink>
+              <NavLink
+                to="/user/subjects"
+                className={({ isActive }) =>
+                  `flex items-center ${
+                    isActive
+                      ? "text-violet-600 font-medium"
+                      : "hover:text-violet-600"
+                  }`
+                }
+                onClick={() => setMenuOpen(false)}
+              >
+                <BookOpen className="w-4 h-4 mr-1" />
+                Môn học
+              </NavLink>
+              <NavLink
+                to="/user/schedule"
+                className={({ isActive }) =>
+                  `flex items-center ${
+                    isActive
+                      ? "text-violet-600 font-medium"
+                      : "hover:text-violet-600"
+                  }`
+                }
+                onClick={() => setMenuOpen(false)}
+              >
+                <Calendar className="w-4 h-4 mr-1" />
+                Lịch học
+              </NavLink>
+              <NavLink
+                to="/user/analytics"
+                className={({ isActive }) =>
+                  `flex items-center ${
+                    isActive
+                      ? "text-violet-600 font-medium"
+                      : "hover:text-violet-600"
+                  }`
+                }
+                onClick={() => setMenuOpen(false)}
+              >
+                <BarChart2 className="w-4 h-4 mr-1" />
+                Phân tích
+              </NavLink>
+            </div>
           </div>
         )}
 
@@ -108,29 +208,6 @@ export default function Navbar() {
           <Menu className="w-6 h-6" />
         </button>
       </div>
-
-      {menuOpen && (
-        <div className="absolute top-full left-0 w-full bg-white dark:bg-gray-900 border-t dark:border-gray-700 shadow-md md:hidden z-40">
-          <div className="flex flex-col p-4 space-y-2">
-            <a href="#" className="flex items-center hover:text-violet-600">
-              <BarChart2 className="w-4 h-4 mr-1" />
-              Tổng quan
-            </a>
-            <a href="#" className="flex items-center hover:text-violet-600">
-              <BookOpen className="w-4 h-4 mr-1" />
-              Môn học
-            </a>
-            <a href="#" className="flex items-center hover:text-violet-600">
-              <Calendar className="w-4 h-4 mr-1" />
-              Lịch học
-            </a>
-            <a href="#" className="flex items-center hover:text-violet-600">
-              <BarChart2 className="w-4 h-4 mr-1" />
-              Phân tích
-            </a>
-          </div>
-        </div>
-      )}
     </nav>
   );
 }

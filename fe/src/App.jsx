@@ -16,6 +16,9 @@ import { NotificationProvider } from "./context/NotificationContext.jsx";
 import { BrowserRouter } from "react-router-dom";
 import ProtectedRoute from "./components/route/ProtectedRoute.jsx";
 import GuestRoute from "./components/route/GuestRoute.jsx";
+import DashboardPage from "./components/pages/DashboardPage.jsx";
+import SubjectPage from "./components/subject/SubjectPage.jsx";
+import ScheduleCalendar from "./components/freetime/ScheduleCalendar.jsx";
 
 // ✅ Layout phải nằm bên trong <Router>
 function Layout({ children }) {
@@ -29,7 +32,7 @@ function Layout({ children }) {
   }, [location]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 ">
       {!hideNavbar && <Navbar />}
       {children}
     </div>
@@ -67,7 +70,14 @@ function App() {
                 }
               ></Route>
               <Route path="/user/info" element={<UserInfo />} />
+              <Route path="/user/dashboard" element={<DashboardPage />}></Route>
               <Route path="*" element={<SignIn />} />
+              <Route path="/user/subjects" element={<SubjectPage />}></Route>
+              <Route
+                path="/user/schedule"
+                element={<ScheduleCalendar></ScheduleCalendar>}
+              />
+              <Route path="/user/analytics" element={<div>Coming soon</div>} />
             </Routes>
           </Layout>
         </UserProvider>
