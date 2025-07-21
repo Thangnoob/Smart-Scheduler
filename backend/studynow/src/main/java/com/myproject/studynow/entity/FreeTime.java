@@ -1,5 +1,6 @@
 package com.myproject.studynow.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -23,6 +24,7 @@ public class FreeTime {
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "user_id")
+    @JsonBackReference
     private User user;
 
     @Min(1)

@@ -37,7 +37,7 @@ public class SecurityConfiguration {
         http.csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Thêm cấu hình CORS
                 .authorizeHttpRequests(request -> request
-                        .requestMatchers("/api/auth/**", "/", "/api/user/info").permitAll()
+                        .requestMatchers("/api/auth/**", "/", "/api/user/info", "/api/subjects/**").permitAll()
                         .requestMatchers("/api/admin/**").hasAnyAuthority(Role.ADMIN.name())
                         .requestMatchers("/api/user/**").hasAnyAuthority(Role.USER.name())
 

@@ -1,11 +1,13 @@
 package com.myproject.studynow.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,12 +20,13 @@ import java.util.List;
 public class Subject {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "id")
     private Long id;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "user_id")
+    @JsonBackReference
     private User user;
 
     @Column(name = "name", nullable = false)
@@ -39,6 +42,9 @@ public class Subject {
     @Min(1)
     @Column(name = "weekly_hours", nullable = false)
     private int weeklyHours;
+
+    @Column(name = "finish_day")
+    private LocalDate finishDay;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();

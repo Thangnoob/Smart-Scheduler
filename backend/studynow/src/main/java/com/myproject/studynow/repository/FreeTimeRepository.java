@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface FreeTimeRepository extends JpaRepository<FreeTime, Long> {
     List<FreeTime> findByUserId(Long userId);
+    List<FreeTime> findByUserIdAndDayOfWeek(Long userId, int dayOfWeek);
+
 }
