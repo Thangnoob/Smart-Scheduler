@@ -10,5 +10,5 @@ import java.util.List;
 public interface FreeTimeRepository extends JpaRepository<FreeTime, Long> {
     List<FreeTime> findByUserId(Long userId);
     List<FreeTime> findByUserIdAndDayOfWeek(Long userId, int dayOfWeek);
-
+    List<FreeTime> findByUserIdOrderByDayOfWeekAscStartTimeAsc(Long userId);
 }

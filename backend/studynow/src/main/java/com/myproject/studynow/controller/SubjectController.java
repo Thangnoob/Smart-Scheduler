@@ -93,4 +93,6 @@ public class SubjectController {
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return currentUser;
     }
+
+
 }
