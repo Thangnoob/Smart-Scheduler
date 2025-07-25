@@ -1,6 +1,7 @@
 package com.myproject.studynow.dto;
 
 import com.myproject.studynow.entity.Priority;
+import com.myproject.studynow.entity.StudySession;
 import com.myproject.studynow.entity.Subject;
 import lombok.Data;
 import lombok.AllArgsConstructor;
@@ -21,4 +22,5 @@ public class StudySessionDTO {
     private Long subjectId;
     private String subjectName;
     private Priority priority;
+
 }

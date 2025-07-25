@@ -18,7 +18,7 @@ public interface SubjectRepository extends JpaRepository<Subject,Long> {
 
     boolean existsByNameAndUserId(String name, Long userId);
 
-    @Query("SELECT s FROM Subject s WHERE s.user.id = :userId ORDER BY s.priority DESC, s.weeklyHours DESC")
+    @Query("SELECT s FROM Subject s WHERE s.user.id = :userId ORDER BY s.priority DESC")
     List<Subject> findByUserIdOrderByPriorityAndHours(Long userId);
 
     List<Subject> findByUserIdAndPriority(Long userId, com.myproject.studynow.entity.Priority priority);

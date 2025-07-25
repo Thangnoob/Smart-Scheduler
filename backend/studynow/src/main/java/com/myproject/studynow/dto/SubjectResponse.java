@@ -22,7 +22,6 @@ public class SubjectResponse {
         this.name = subject.getName();
         this.description = subject.getDescription();
         this.priority = subject.getPriority();
-        this.weeklyHours = subject.getWeeklyHours();
         this.finishDay = subject.getFinishDay();
         this.createdAt = subject.getCreatedAt();
     }

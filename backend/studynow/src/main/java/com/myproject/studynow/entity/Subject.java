@@ -1,6 +1,7 @@
 package com.myproject.studynow.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
@@ -26,7 +27,7 @@ public class Subject {
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "user_id")
-    @JsonBackReference
+    @JsonBackReference(value = "user-subject")
     private User user;
 
     @Column(name = "name", nullable = false)
@@ -39,10 +40,6 @@ public class Subject {
     @Enumerated(EnumType.STRING)
     private Priority priority; // 1=low, 2=medium, 3=high
 
-    @Min(1)
-    @Column(name = "weekly_hours", nullable = false)
-    private int weeklyHours;
-
     @Column(name = "finish_day")
     private LocalDate finishDay;
 
@@ -50,5 +47,6 @@ public class Subject {
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @OneToMany(mappedBy = "subject", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference(value = "subject-session")
     private List<StudySession> studySessions = new ArrayList<>();
 }

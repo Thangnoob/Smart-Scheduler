@@ -50,7 +50,6 @@ public class SubjectController {
         subject.setName(request.getName());
         subject.setDescription(request.getDescription());
         subject.setPriority(request.getPriority());
-        subject.setWeeklyHours(request.getWeeklyHours());
         subject.setFinishDay(request.getFinishDay());
         subject.setUser(getCurrentUserId());
 

@@ -1,4 +1,9 @@
 package com.myproject.studynow.service;
 
-public interface StudySession {
+import com.myproject.studynow.entity.StudySession;
+
+import java.util.List;
+
+public interface StudySessionService {
+    List<StudySession> getStudySessionThisWeek(Long userId);
 }

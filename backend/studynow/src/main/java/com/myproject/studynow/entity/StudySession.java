@@ -22,11 +22,12 @@ public class StudySession {
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "user_id")
-    @JsonBackReference
+    @JsonBackReference(value = "user-session")
     private User user;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "subject_id")
+    @JsonBackReference(value = "subject-session")
     private Subject subject;
 
     @Column(name = "start_time", nullable = false)

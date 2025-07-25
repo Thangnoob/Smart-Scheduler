@@ -18,7 +18,6 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class SubjectServiceImpl implements SubjectService {
 
-
     private final SubjectRepository subjectRepository;
 
     @Override
@@ -68,7 +67,6 @@ public class SubjectServiceImpl implements SubjectService {
         existingSubject.setName(updatedSubject.getName());
         existingSubject.setDescription(updatedSubject.getDescription());
         existingSubject.setPriority(updatedSubject.getPriority());
-        existingSubject.setWeeklyHours(updatedSubject.getWeeklyHours());
         existingSubject.setFinishDay(updatedSubject.getFinishDay());
 
         return subjectRepository.save(existingSubject);

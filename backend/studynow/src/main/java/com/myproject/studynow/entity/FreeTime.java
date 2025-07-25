@@ -24,7 +24,7 @@ public class FreeTime {
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "user_id")
-    @JsonBackReference
+    @JsonBackReference(value = "user-freetime")
     private User user;
 
     @Min(1)

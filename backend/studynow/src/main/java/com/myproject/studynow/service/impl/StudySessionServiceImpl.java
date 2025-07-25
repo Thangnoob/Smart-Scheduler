@@ -1,11 +1,13 @@
 package com.myproject.studynow.service.impl;
 
+import com.myproject.studynow.dto.StudySessionDTO;
 import com.myproject.studynow.entity.*;
 import com.myproject.studynow.repository.StudySessionRepository;
 import com.myproject.studynow.repository.SubjectRepository;
 import com.myproject.studynow.repository.FreeTimeRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.myproject.studynow.service.StudySessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.DayOfWeek;
@@ -26,7 +29,7 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class StudySessionService {
+public class StudySessionServiceImpl implements StudySessionService {
 
     private final StudySessionRepository studySessionRepository;
     private final SubjectRepository subjectRepository;
@@ -45,6 +48,20 @@ public class StudySessionService {
 
     public List<StudySession> getStudySessionByUserId(Long userId) {
         return studySessionRepository.findByUserId(userId);
+    }
+
+    @Override
+    public List<StudySession> getStudySessionThisWeek(Long userId) {
+        LocalDate today = LocalDate.now();
+
+        // Tìm ngày đầu tuần (thứ 2)
+        LocalDate monday = today.with(java.time.DayOfWeek.MONDAY);
+        LocalDate sunday = monday.plusDays(6);
+
+        LocalDateTime startOfWeek = monday.atStartOfDay();
+        LocalDateTime endOfWeek = sunday.atTime(LocalTime.MAX);
+
+        return studySessionRepository.findByUserIdAndStartTimeBetween(userId, startOfWeek, endOfWeek);
     }
 
     /**
@@ -90,24 +107,21 @@ public class StudySessionService {
     private String buildPromptForOpenAI(List<Subject> subjects, List<FreeTime> freeTimes, int daysAhead) {
         StringBuilder prompt = new StringBuilder();
 
-        prompt.append("You are a smart AI assistant for scheduling study sessions.\n\n");
+        prompt.append("You are a smart AI assistant that helps students create study schedules.\n\n");
 
         // Given
         prompt.append("Given:\n");
-        prompt.append("- A list of subjects (name, priority, weeklyHours");
+        prompt.append("- A list of subjects (name");
         if (subjects.stream().anyMatch(s -> s.getFinishDay() != null)) {
             prompt.append(", optional finishDate");
         }
         prompt.append(")\n");
-        prompt.append("- A list of freeTime slots (dayOfWeek 1-7, start, end)\n\n");
+        prompt.append("- A list of free time slots (dayOfWeek 1-7, start, end)\n\n");
 
         // Subject list
         prompt.append("SUBJECTS:\n");
         for (Subject subject : subjects) {
-            prompt.append(String.format("- %s, Priority: %s, WeeklyHours: %d",
-                    subject.getName(),
-                    subject.getPriority().name(),
-                    subject.getWeeklyHours()));
+            prompt.append(String.format("- %s", subject.getName()));
             if (subject.getFinishDay() != null) {
                 prompt.append(", FinishBy: ").append(subject.getFinishDay().toString());
             }
@@ -127,14 +141,13 @@ public class StudySessionService {
 
         // Constraints
         prompt.append("\nConstraints:\n");
-        prompt.append(String.format("- Plan for next %d days\n", daysAhead));
-        prompt.append("- Respect weeklyHours for each subject\n");
-        prompt.append("- Prioritize high priority subjects\n");
-        prompt.append("- Use only freeTime slots\n");
+        prompt.append(String.format("- Plan sessions for the next %d days\n", daysAhead));
+        prompt.append("- Prioritize subjects fairly\n");
+        prompt.append("- Use only the given free time slots\n");
         prompt.append("- Each session: 30–120 minutes\n\n");
 
         // Output
-        prompt.append("Respond with JSON only:\n");
+        prompt.append("Respond only with valid JSON like this:\n");
         prompt.append("{\n");
         prompt.append("  \"sessions\": [\n");
         prompt.append("    {\n");
@@ -150,6 +163,7 @@ public class StudySessionService {
 
         return prompt.toString();
     }
+
 
 
     /**
@@ -297,35 +311,49 @@ public class StudySessionService {
     private List<StudySession> createFallbackSessions(List<Subject> subjects, List<FreeTime> freeTimes, Long userId) {
         List<StudySession> sessions = new ArrayList<>();
 
-        // Simple algorithm: distribute subjects across free times
+        if (freeTimes.isEmpty() || subjects.isEmpty()) return sessions;
+
+        int defaultSessionDurationMinutes = 60;
+
+        int freeTimeIndex = 0;
+
         for (Subject subject : subjects) {
-            int hoursNeeded = subject.getWeeklyHours();
-            int sessionsCount = Math.max(1, hoursNeeded / 2); // 2 hours per session
+            // Mặc định tạo 2 session cho mỗi môn
+            int sessionsPerSubject = 2;
 
-            for (int i = 0; i < sessionsCount && i < freeTimes.size(); i++) {
-                FreeTime freeTime = freeTimes.get(i % freeTimes.size());
+            for (int i = 0; i < sessionsPerSubject; i++) {
+                FreeTime freeTime = freeTimes.get(freeTimeIndex % freeTimes.size());
 
+                // Tìm ngày gần nhất tương ứng với dayOfWeek
                 LocalDateTime startDateTime = getNextDateTimeForDay(
                         freeTime.getDayOfWeek(),
-                        freeTime.getStartTime().toString());
+                        freeTime.getStartTime().toString()
+                );
 
-                LocalDateTime endDateTime = startDateTime.plusHours(2);
+                LocalDateTime endDateTime = startDateTime.plusMinutes(defaultSessionDurationMinutes);
+
+                // Nếu endTime vượt quá freeTime thì bỏ qua
+                if (endDateTime.toLocalTime().isAfter(freeTime.getEndTime())) {
+                    continue;
+                }
 
                 StudySession session = new StudySession();
                 session.setUser(subject.getUser());
                 session.setSubject(subject);
                 session.setStartTime(startDateTime);
                 session.setEndTime(endDateTime);
-                session.setDuration(120);
+                session.setDuration(defaultSessionDurationMinutes);
                 session.setCompleted(false);
                 session.setCreatedAt(LocalDateTime.now());
 
                 sessions.add(session);
+                freeTimeIndex++;
             }
         }
 
         return sessions;
     }
+
 
     /**
      * Utility methods
