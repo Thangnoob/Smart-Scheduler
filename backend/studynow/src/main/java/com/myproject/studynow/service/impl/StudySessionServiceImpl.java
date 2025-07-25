@@ -1,8 +1,5 @@
-package com.myproject.studynow.service;
+package com.myproject.studynow.service.impl;
 
-import com.google.cloud.vertexai.VertexAI;
-import com.google.cloud.vertexai.api.*;
-import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.myproject.studynow.entity.*;
 import com.myproject.studynow.repository.StudySessionRepository;
 import com.myproject.studynow.repository.SubjectRepository;
@@ -12,34 +9,43 @@ import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.DayOfWeek;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class StudySessionSchedulerService {
+public class StudySessionService {
 
     private final StudySessionRepository studySessionRepository;
     private final SubjectRepository subjectRepository;
     private final FreeTimeRepository freeTimeRepository;
     private final ObjectMapper objectMapper;
+    private final RestTemplate restTemplate;
 
-    @Value("${PROJECT_ID}")
-    private String projectId;
+    @Value("${GEMINI_KEY}")
+    private String openaiApiKey;
 
-    @Value("${LOCATION_AI}")
-    private String location;
+    @Value("${openai.api.url:https://generativelanguage.googleapis.com/v1beta/openai/chat/completions}")
+    private String openaiApiUrl;
 
-    @Value("${MODAL_AI}")
-    private String modelName;
+    @Value("${openai.model:gemini-2.0-flash}")
+    private String openaiModel;
+
+    public List<StudySession> getStudySessionByUserId(Long userId) {
+        return studySessionRepository.findByUserId(userId);
+    }
 
     /**
      * Tạo study sessions cho user dựa trên subjects và free times
@@ -47,6 +53,9 @@ public class StudySessionSchedulerService {
     @Transactional
     public List<StudySession> generateStudySessionsForUser(Long userId, int daysAhead) {
         try {
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime future = now.plusDays(daysAhead);
+            studySessionRepository.deleteByUserIdAndTimeRange(userId, now, future);
             // Lấy dữ liệu từ database
             List<Subject> subjects = subjectRepository.findByUserId(userId);
             List<FreeTime> freeTimes = freeTimeRepository.findByUserId(userId);
@@ -56,15 +65,15 @@ public class StudySessionSchedulerService {
                 return Collections.emptyList();
             }
 
-            // Tạo prompt cho Gemini
-            String prompt = buildPromptForGemini(subjects, freeTimes, daysAhead);
+            // Tạo prompt cho OpenAI
+            String prompt = buildPromptForOpenAI(subjects, freeTimes, daysAhead);
 
-            // Gọi Gemini API
-            String geminiResponse = callGeminiAPI(prompt);
+            // Gọi OpenAI API
+            String openaiResponse = callOpenAIAPI(prompt);
 
             // Parse response và tạo study sessions
-            List<StudySession> studySessions = parseGeminiResponseAndCreateSessions(
-                    geminiResponse, subjects, freeTimes, userId);
+            List<StudySession> studySessions = parseOpenAIResponseAndCreateSessions(
+                    openaiResponse, subjects, freeTimes, userId);
 
             // Lưu vào database
             return studySessionRepository.saveAll(studySessions);
@@ -76,107 +85,141 @@ public class StudySessionSchedulerService {
     }
 
     /**
-     * Xây dựng prompt cho Gemini API
+     * Xây dựng prompt cho OpenAI API
      */
-    private String buildPromptForGemini(List<Subject> subjects, List<FreeTime> freeTimes, int daysAhead) {
+    private String buildPromptForOpenAI(List<Subject> subjects, List<FreeTime> freeTimes, int daysAhead) {
         StringBuilder prompt = new StringBuilder();
 
-        prompt.append("You are an AI specialized in study planning. ");
-        prompt.append("Generate an optimized study schedule based on the following:\n\n");
+        prompt.append("You are a smart AI assistant for scheduling study sessions.\n\n");
 
+        // Given
+        prompt.append("Given:\n");
+        prompt.append("- A list of subjects (name, priority, weeklyHours");
+        if (subjects.stream().anyMatch(s -> s.getFinishDay() != null)) {
+            prompt.append(", optional finishDate");
+        }
+        prompt.append(")\n");
+        prompt.append("- A list of freeTime slots (dayOfWeek 1-7, start, end)\n\n");
+
+        // Subject list
         prompt.append("SUBJECTS:\n");
         for (Subject subject : subjects) {
-            prompt.append(String.format("- %s: %s, Priority: %s, WeeklyHours: %d",
+            prompt.append(String.format("- %s, Priority: %s, WeeklyHours: %d",
                     subject.getName(),
-                    subject.getDescription() != null ? subject.getDescription() : "No description",
                     subject.getPriority().name(),
                     subject.getWeeklyHours()));
             if (subject.getFinishDay() != null) {
-                prompt.append(", FinishBy: " + subject.getFinishDay().toString());
+                prompt.append(", FinishBy: ").append(subject.getFinishDay().toString());
             }
             prompt.append("\n");
         }
 
+        // Free time list
         prompt.append("\nFREE TIME:\n");
         for (FreeTime freeTime : freeTimes) {
             String dayName = getDayName(freeTime.getDayOfWeek());
-            prompt.append(String.format("- %s: %s - %s\n",
+            prompt.append(String.format("- %s (%d): %s - %s\n",
                     dayName,
+                    freeTime.getDayOfWeek(),
                     freeTime.getStartTime().format(DateTimeFormatter.ofPattern("HH:mm")),
                     freeTime.getEndTime().format(DateTimeFormatter.ofPattern("HH:mm"))));
         }
 
-        prompt.append("\nREQUIREMENTS:\n");
-        prompt.append(String.format("- Schedule for the next %d days\n", daysAhead));
-        prompt.append("- Prioritize HIGH priority subjects\n");
-        prompt.append("- Distribute study time evenly across days\n");
-        prompt.append("- Match total weekly hours per subject\n");
-        prompt.append("- Only use available free time slots\n");
-        prompt.append("- Each session should be 30–120 minutes\n");
-        prompt.append("- Avoid very long study days\n\n");
+        // Constraints
+        prompt.append("\nConstraints:\n");
+        prompt.append(String.format("- Plan for next %d days\n", daysAhead));
+        prompt.append("- Respect weeklyHours for each subject\n");
+        prompt.append("- Prioritize high priority subjects\n");
+        prompt.append("- Use only freeTime slots\n");
+        prompt.append("- Each session: 30–120 minutes\n\n");
 
-        prompt.append("OUTPUT FORMAT (JSON only):\n");
+        // Output
+        prompt.append("Respond with JSON only:\n");
         prompt.append("{\n");
         prompt.append("  \"sessions\": [\n");
         prompt.append("    {\n");
-        prompt.append("      \"subjectName\": \"Subject name\",\n");
+        prompt.append("      \"subjectName\": \"...\",\n");
         prompt.append("      \"dayOfWeek\": 1-7,\n");
         prompt.append("      \"startTime\": \"HH:mm\",\n");
         prompt.append("      \"endTime\": \"HH:mm\",\n");
-        prompt.append("      \"duration\": 60,\n");
-        prompt.append("      \"description\": \"Short note\"\n");
+        prompt.append("      \"duration\": int,\n");
+        prompt.append("      \"description\": \"...\"\n");
         prompt.append("    }\n");
         prompt.append("  ]\n");
-        prompt.append("}\n\n");
-        prompt.append("Return JSON only. No explanation or comments.");
+        prompt.append("}");
 
         return prompt.toString();
     }
 
 
     /**
-     * Gọi Gemini API
+     * Gọi OpenAI API
      */
-    private String callGeminiAPI(String prompt) throws Exception {
-        try (VertexAI vertexAI = new VertexAI(projectId, location)) {
-            GenerativeModel model = new GenerativeModel(modelName, vertexAI);
+    private String callOpenAIAPI(String prompt) throws Exception {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", "Bearer " + openaiApiKey);
+            headers.set("Content-Type", "application/json");
 
-            // Cấu hình tùy chọn (nếu muốn)
-            model = model.withGenerationConfig(
-                    GenerationConfig.newBuilder()
-                            .setTemperature(0.7f)
-                            .setTopP(0.8f)
-                            .setMaxOutputTokens(2048)
-                            .build()
+            // Tạo request body cho OpenAI
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("model", openaiModel);
+            requestBody.put("temperature", 0.7);
+            requestBody.put("max_tokens", 2048);
+            requestBody.put("top_p", 0.8);
+
+            List<Map<String, String>> messages = new ArrayList<>();
+            Map<String, String> message = new HashMap<>();
+            message.put("role", "user");
+            message.put("content", prompt);
+            messages.add(message);
+
+            requestBody.put("messages", messages);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    openaiApiUrl,
+                    HttpMethod.POST,
+                    request,
+                    String.class
             );
 
-            // Dùng Content API mới
-            Content content = Content.newBuilder()
-                    .addParts(Part.newBuilder().setText(prompt).build())
-                    .build();
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                // Parse OpenAI response
+                JsonNode responseNode = objectMapper.readTree(response.getBody());
+                JsonNode choicesNode = responseNode.get("choices");
 
-            GenerateContentResponse response = model.generateContent(content);
+                if (choicesNode != null && choicesNode.isArray() && choicesNode.size() > 0) {
+                    JsonNode firstChoice = choicesNode.get(0);
+                    JsonNode messageNode = firstChoice.get("message");
+                    if (messageNode != null) {
+                        return messageNode.get("content").asText();
+                    }
+                }
 
-            if (response.getCandidatesCount() > 0) {
-                return response.getCandidates(0).getContent().getParts(0).getText();
+                throw new RuntimeException("Invalid response format from OpenAI API");
             } else {
-                throw new RuntimeException("No response from Gemini API");
+                throw new RuntimeException("Failed to get response from OpenAI API: " + response.getStatusCode());
             }
+
+        } catch (Exception e) {
+            log.error("Error calling OpenAI API: {}", e.getMessage());
+            throw new RuntimeException("Failed to call OpenAI API", e);
         }
     }
 
-
     /**
-     * Parse response từ Gemini và tạo StudySession objects
+     * Parse response từ OpenAI và tạo StudySession objects
      */
-    private List<StudySession> parseGeminiResponseAndCreateSessions(
-            String geminiResponse, List<Subject> subjects, List<FreeTime> freeTimes, Long userId) {
+    private List<StudySession> parseOpenAIResponseAndCreateSessions(
+            String openaiResponse, List<Subject> subjects, List<FreeTime> freeTimes, Long userId) {
 
         List<StudySession> studySessions = new ArrayList<>();
 
         try {
             // Clean response (remove markdown if any)
-            String cleanResponse = geminiResponse.trim();
+            String cleanResponse = openaiResponse.trim();
             if (cleanResponse.startsWith("```json")) {
                 cleanResponse = cleanResponse.substring(7);
             }
@@ -197,7 +240,7 @@ public class StudySessionSchedulerService {
             }
 
         } catch (Exception e) {
-            log.error("Error parsing Gemini response: {}", e.getMessage());
+            log.error("Error parsing OpenAI response: {}", e.getMessage());
             // Fallback: tạo sessions cơ bản
             studySessions = createFallbackSessions(subjects, freeTimes, userId);
         }
@@ -249,7 +292,7 @@ public class StudySessionSchedulerService {
     }
 
     /**
-     * Tạo sessions cơ bản khi Gemini fail
+     * Tạo sessions cơ bản khi OpenAI fail
      */
     private List<StudySession> createFallbackSessions(List<Subject> subjects, List<FreeTime> freeTimes, Long userId) {
         List<StudySession> sessions = new ArrayList<>();

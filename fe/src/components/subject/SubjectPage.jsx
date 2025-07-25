@@ -145,10 +145,6 @@ export default function SubjectPage() {
                         </>
                       )}
                     </span>
-                    <span className="flex items-center gap-1 text-gray-500">
-                      <Timer className="w-4 h-4" /> {subject.weeklyHours}
-                      giờ/tuần
-                    </span>
                   </div>
 
                   <div className="flex items-center justify-between text-sm text-gray-500 mt-3">

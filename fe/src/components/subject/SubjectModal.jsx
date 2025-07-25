@@ -21,14 +21,6 @@ const subjectSchema = yup.object().shape({
     .oneOf(["LOW", "MEDIUM", "HIGH"])
     .required("Chọn mức độ ưu tiên"),
 
-  weeklyHours: yup
-    .number()
-    .typeError("Phải là một số")
-    .integer("Phải là số nguyên")
-    .min(1, "Số giờ học phải lớn hơn 0")
-    .max(168, "Bạn có chắc là sẽ không làm gì ngoài học không ?")
-    .required("Bắt buộc nhập số giờ"),
-
   finishDay: yup
     .string()
     .transform((value, originalValue) => {
@@ -75,7 +67,7 @@ export default function SubjectModal({
       name: "",
       description: "",
       priority: "MEDIUM",
-      weeklyHours: 8,
+
       finishDay: "",
     },
   });
@@ -86,7 +78,7 @@ export default function SubjectModal({
       setValue("name", initialData.name || "");
       setValue("description", initialData.description || "");
       setValue("priority", initialData.priority || "MEDIUM");
-      setValue("weeklyHours", initialData.weeklyHours || 8);
+
       setValue("finishDay", initialData.finishDay || "");
     } else {
       // Reset về mặc định nếu là tạo mới
@@ -182,34 +174,19 @@ export default function SubjectModal({
             </div>
             <div className="w-1/2">
               <label className="block text-sm font-medium mb-1">
-                Số giờ/tuần
+                Ngày kết thúc-deadline (tùy chọn)
               </label>
               <input
-                type="number"
-                {...register("weeklyHours")}
+                type="date"
+                {...register("finishDay")}
                 className="w-full px-3 py-2 border rounded-md"
-                min={1}
               />
-              {errors.weeklyHours && (
+              {errors.finishDay && (
                 <p className="text-red-500 text-sm">
-                  {errors.weeklyHours.message}
+                  {errors.finishDay.message}
                 </p>
               )}
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Ngày kết thúc
-            </label>
-            <input
-              type="date"
-              {...register("finishDay")}
-              className="w-full px-3 py-2 border rounded-md"
-            />
-            {errors.finishDay && (
-              <p className="text-red-500 text-sm">{errors.finishDay.message}</p>
-            )}
           </div>
 
           <div className="pt-4 flex justify-end gap-2">

@@ -195,7 +195,7 @@ export default function FreeTimeModal({
           <h3 className="text-sm font-medium text-gray-900 mb-3">
             Danh sách thời gian rảnh
           </h3>
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-60 overflow-y-auto">
             {freeTimeSlots.map((slot) => (
               <div
                 key={slot.id}

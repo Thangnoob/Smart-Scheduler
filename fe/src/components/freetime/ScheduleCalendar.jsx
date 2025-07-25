@@ -13,6 +13,8 @@ import {
 import FreeTimeModal from "./FreeTimeModal";
 import api from "../../api/api";
 
+import WeeklyCalendar from "./ScheduleWithBigCalendar"; // đường dẫn phù hợp với project bạn
+
 const dayLabels = [
   "Chủ nhật",
   "Thứ 2",
@@ -54,6 +56,16 @@ const ScheduleCalendar = () => {
   const [startTime, setStartTime] = useState("06:00");
   const [endTime, setEndTime] = useState("06:00");
   const [freeTimeSlots, setFreeTimeSlots] = useState([]);
+  const [studySessions, setStudySessions] = useState([]);
+
+  const generateStudySessions = async () => {
+    try {
+      const response = await api.post("/study-sessions/generate");
+      setStudySessions(response.data);
+    } catch (error) {
+      console.error("Lỗi khi tạo lịch học:", error);
+    }
+  };
 
   const [freeTimes, setFreeTimes] = useState([]);
 
@@ -66,8 +78,18 @@ const ScheduleCalendar = () => {
     }
   };
 
+  const fetchStudySession = async () => {
+    try {
+      const response = await api.get("/study-sessions/this-week");
+      setStudySessions(response.data);
+    } catch (error) {
+      console.error("Lỗi khi lấy phiên học:", error);
+    }
+  };
+
   useEffect(() => {
     fetchFreeTimes();
+    fetchStudySession();
   }, []);
 
   const getDayName = (dayOfWeek) => {
@@ -84,20 +106,50 @@ const ScheduleCalendar = () => {
   };
 
   const renderFreeTimeForDay = (dayName) => {
-    return freeTimes
-      .filter((slot) => getDayName(slot.dayOfWeek) === dayName)
-      .map((slot) => (
-        <div
-          key={slot.id}
-          className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2"
-        >
-          <div className="flex items-center gap-2 text-blue-700 text-sm font-medium mb-1">
-            <Clock className="w-4 h-4" />
-            {slot.startTime.slice(0, 5)} - {slot.endTime.slice(0, 5)}
-          </div>
-          <div className="text-xs text-blue-600">Rảnh</div>
+    const slotsForDay = freeTimes.filter(
+      (slot) => getDayName(slot.dayOfWeek) === dayName
+    );
+
+    if (slotsForDay.length === 0) {
+      return (
+        <div className="flex items-center justify-center text-gray-400 text-sm mt-2">
+          <Calendar className="w-4 h-4 mr-1" />
+          Chưa có lịch
         </div>
-      ));
+      );
+    }
+
+    return slotsForDay.map((slot) => (
+      <div
+        key={slot.id}
+        className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2"
+      >
+        <div className="flex items-center gap-2 text-blue-700 text-sm font-medium mb-1">
+          <Clock className="w-4 h-4" />
+          {slot.startTime.slice(0, 5)} - {slot.endTime.slice(0, 5)}
+        </div>
+        <div className="text-xs text-blue-600">Rảnh</div>
+      </div>
+    ));
+  };
+  const renderStudySessionsForDay = (dayName) => {
+    const sessionsForDay = studySessions.filter((session) => {
+      const day = new Date(session.startTime).getDay(); // 0 - Chủ nhật
+      return getDayName(day === 0 ? 7 : day) === dayName; // map về 'Thứ X'
+    });
+
+    return sessionsForDay.map((session) => (
+      <div
+        key={session.id}
+        className="bg-green-50 border border-green-200 rounded-lg p-3 mb-2"
+      >
+        <div className="flex items-center gap-2 text-green-700 text-sm font-medium mb-1">
+          <BookOpen className="w-4 h-4" />
+          {session.startTime.slice(11, 16)} - {session.endTime.slice(11, 16)}
+        </div>
+        <div className="text-xs text-green-600">Học</div>
+      </div>
+    ));
   };
 
   function handleCloseModal() {
@@ -120,11 +172,17 @@ const ScheduleCalendar = () => {
             </p>
           </div>
           <div className="flex gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
-              <User className="w-4 h-4" />
-              Thời gian rảnh
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100"
+            >
+              <Clock className="w-5 h-5" />
+              Quản lý thời gian rảnh
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+            <button
+              onClick={generateStudySessions}
+              className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+            >
               <Plus className="w-4 h-4" />
               Tạo lịch AI
             </button>
@@ -132,28 +190,11 @@ const ScheduleCalendar = () => {
         </div>
 
         {/* Calendar Grid */}
-        <div className="grid grid-cols-7 gap-4 mb-8">
-          {daysOfWeek.map((day, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 min-h-[200px]"
-            >
-              <div className="flex flex-col items-center mb-4">
-                <div className="text-sm text-gray-600 mb-1">{day.day}</div>
-                <div className="text-lg font-semibold text-gray-900">
-                  {day.date}
-                </div>
-              </div>
-
-              {renderFreeTimeForDay(day.day)}
-
-              <div className="flex items-center justify-center text-gray-400 text-sm mt-2">
-                <Calendar className="w-4 h-4 mr-1" />
-                Chưa có lịch
-              </div>
-            </div>
-          ))}
-        </div>
+        <WeeklyCalendar
+          freeTimes={freeTimes}
+          studySessions={studySessions}
+          onGenerateStudySessions={generateStudySessions}
+        />
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-6">
@@ -197,17 +238,6 @@ const ScheduleCalendar = () => {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Free Time Management Button */}
-        <div className="fixed bottom-6 right-6">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors"
-          >
-            <Clock className="w-5 h-5" />
-            Quản lý thời gian rảnh
-          </button>
         </div>
       </div>
 
