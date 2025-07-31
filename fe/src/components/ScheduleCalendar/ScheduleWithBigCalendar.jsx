@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format, startOfWeek, addDays, isSameDay } from "date-fns";
 import {
   ChevronLeft,
@@ -8,8 +8,10 @@ import {
   Sun,
   Moon,
   Sunrise,
+  BadgeCheck,
 } from "lucide-react";
-import StudySessionModal from "../subject/SubjectCard";
+import PomodoroTimer from "./PomodoroTimer";
+import { useNotification } from "../../context/NotificationContext";
 
 const getCurrentWeekDates = (currentWeekOffset = 0) => {
   const today = new Date();
@@ -32,7 +34,31 @@ const getPriorityColor = (priority) => {
   }
 };
 
-const groupSessionsByTimeSlot = (sessions, freeTimes) => {
+const groupFreeTimesByDay = (freeTimes) => {
+  const dayMap = {
+    1: "Thứ 2",
+    2: "Thứ 3",
+    3: "Thứ 4",
+    4: "Thứ 5",
+    5: "Thứ 6",
+    6: "Thứ 7",
+    0: "Chủ nhật",
+  };
+
+  const grouped = {};
+  Object.values(dayMap).forEach((day) => {
+    grouped[day] = [];
+  });
+
+  freeTimes.forEach((freeTime) => {
+    const dayName = dayMap[freeTime.dayOfWeek % 7];
+    grouped[dayName].push(freeTime);
+  });
+
+  return grouped;
+};
+
+const groupSessionsByTimeSlot = (sessions) => {
   const grouped = {};
 
   // Initialize grouped structure for each day
@@ -45,6 +71,7 @@ const groupSessionsByTimeSlot = (sessions, freeTimes) => {
     "Thứ 6",
     "Thứ 7",
   ];
+
   dayNames.forEach((dayName) => {
     grouped[dayName] = { morning: [], afternoon: [], evening: [] };
   });
@@ -64,18 +91,6 @@ const groupSessionsByTimeSlot = (sessions, freeTimes) => {
     grouped[dayName][timeSlot].push({ ...session, type: "study" });
   });
 
-  // Group free times
-  freeTimes.forEach((freeTime) => {
-    const dayName = dayNames[freeTime.dayOfWeek % 7];
-    const hour = parseInt(freeTime.startTime.split(":")[0], 10);
-    let timeSlot = "";
-    if (hour < 12) timeSlot = "morning";
-    else if (hour < 18) timeSlot = "afternoon";
-    else timeSlot = "evening";
-
-    grouped[dayName][timeSlot].push({ ...freeTime, type: "free" });
-  });
-
   // Sort sessions within each time slot
   dayNames.forEach((dayName) => {
     ["morning", "afternoon", "evening"].forEach((slot) => {
@@ -88,15 +103,22 @@ const groupSessionsByTimeSlot = (sessions, freeTimes) => {
       });
     });
   });
-
   return grouped;
 };
 
-const WeeklyCalendar = ({ freeTimes, studySessions }) => {
+const WeeklyCalendar = ({
+  freeTimes,
+  studySessions,
+  onChangeWeek,
+  onReloadSessions,
+}) => {
   const [currentWeek, setCurrentWeek] = useState(0);
   const [selectedSession, setSelectedSession] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const groupedSessions = groupSessionsByTimeSlot(studySessions, freeTimes);
+  const groupedSessions = groupSessionsByTimeSlot(studySessions);
+  const groupedFreeTimesByDay = groupFreeTimesByDay(freeTimes);
+
+  const { notify } = useNotification();
 
   const timeSlots = [
     { label: "Sáng", key: "morning", icon: Sunrise, color: "text-yellow-600" },
@@ -120,8 +142,27 @@ const WeeklyCalendar = ({ freeTimes, studySessions }) => {
   );
 
   const handleSessionClick = (session) => {
+    const now = new Date();
+    const endTime = new Date(session.endTime);
+
+    if (session.completed) {
+      notify("Phiên học đã hoàn thành", "info");
+      return;
+    }
+
+    if (endTime < now) {
+      notify("Phiên học này đã hết hạn. Vui lòng chọn phiên khác!", "error");
+      return;
+    }
+
     if (session.type === "study") {
-      setSelectedSession(session);
+      setSelectedSession({
+        id: session.id,
+        subjectName: session.subjectName,
+        duration: session.duration,
+        startTime: session.startTime,
+        endTime: session.endTime,
+      });
       setShowModal(true);
     }
   };
@@ -144,6 +185,24 @@ const WeeklyCalendar = ({ freeTimes, studySessions }) => {
     return `${format(startDate, "dd/MM")} - ${format(endDate, "dd/MM/yyyy")}`;
   };
 
+  const handlePrevWeek = () => {
+    const newOffset = currentWeek - 1;
+    setCurrentWeek(newOffset);
+    onChangeWeek(newOffset);
+  };
+
+  const handleNextWeek = () => {
+    const newOffset = currentWeek + 1;
+    setCurrentWeek(newOffset);
+    onChangeWeek(newOffset);
+  };
+
+  const handleThisWeek = () => {
+    const newOffset = 0;
+    setCurrentWeek(newOffset);
+    onChangeWeek(newOffset);
+  };
+
   return (
     <div className="my-2 max-w-7xl mx-auto">
       {/* Calendar Grid */}
@@ -157,7 +216,7 @@ const WeeklyCalendar = ({ freeTimes, studySessions }) => {
             {/* Navigation */}
             <div className="flex justify-between items-center">
               <button
-                onClick={() => setCurrentWeek(currentWeek - 1)}
+                onClick={handlePrevWeek}
                 className="flex items-center px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200 font-medium text-gray-700"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -165,15 +224,15 @@ const WeeklyCalendar = ({ freeTimes, studySessions }) => {
               </button>
 
               <button
-                onClick={() => setCurrentWeek(0)}
+                onClick={handleThisWeek}
                 className="px-4 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg transition-colors duration-200 font-medium"
               >
                 Tuần hiện tại
               </button>
 
               <button
-                onClick={() => setCurrentWeek(currentWeek + 1)}
-                className="flex items-center px-2 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200 font-medium text-gray-700"
+                onClick={handleNextWeek}
+                className="flex items-center px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200 font-medium text-gray-700"
               >
                 <span>Tuần sau</span>
                 <ChevronRight className="w-4 h-4" />
@@ -197,6 +256,32 @@ const WeeklyCalendar = ({ freeTimes, studySessions }) => {
               <div className="font-semibold text-sm">{day}</div>
               <div className="text-xs mt-1 opacity-90">
                 {format(daysOfWeek[index], "dd/MM")}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-8 border-t border-gray-300">
+          <div className="p-4 bg-gradient-to-r from-gray-100 to-gray-200 border-r border-gray-300">
+            Thời gian rảnh
+          </div>
+          {dayNames.map((day, index) => (
+            <div
+              key={index}
+              className="p-3 min-h-[60px] border-r border-gray-200 last:border-r-0"
+            >
+              <div className="space-y-2">
+                {(groupedFreeTimesByDay[day] || []).map((time, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center space-x-1 mb-1 bg-gradient-to-r from-blue-400 to-blue-500 text-white rounded-md px-2 py-1 text-xs font-medium shadow"
+                  >
+                    <Clock className="w-3 h-3" />
+                    <span className="font-semibold">
+                      {time.startTime.slice(0, 5)} - {time.endTime.slice(0, 5)}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
@@ -243,7 +328,11 @@ const WeeklyCalendar = ({ freeTimes, studySessions }) => {
                       `}
                       >
                         <div className="flex items-center space-x-1 mb-1">
-                          <Clock className="w-3 h-3" />
+                          {session.completed ? (
+                            <BadgeCheck className="w-3 h-3 text-green-500" />
+                          ) : (
+                            <Clock className="w-3 h-3" />
+                          )}
                           <span className="font-semibold">
                             {session.type === "study"
                               ? `${session.startTime.slice(
@@ -256,10 +345,10 @@ const WeeklyCalendar = ({ freeTimes, studySessions }) => {
                                 )} - ${session.endTime.slice(0, 5)}`}
                           </span>
                         </div>
-                        <div className="truncate">
-                          {session.type === "study"
-                            ? session.subjectName
-                            : "Thời gian rảnh"}
+                        <div>
+                          {session.completed
+                            ? `${session.subjectName} - Đã học `
+                            : session.subjectName}
                         </div>
                       </div>
                     )
@@ -304,8 +393,12 @@ const WeeklyCalendar = ({ freeTimes, studySessions }) => {
       </div>
 
       {showModal && (
-        <StudySessionModal
-          session={selectedSession}
+        <PomodoroTimer
+          sessionId={selectedSession.id}
+          subjectName={selectedSession.subjectName}
+          duration={selectedSession.duration}
+          totalPomodoros={selectedSession.totalPomodoros}
+          onCompleted={onReloadSessions}
           onClose={() => setShowModal(false)}
         />
       )}

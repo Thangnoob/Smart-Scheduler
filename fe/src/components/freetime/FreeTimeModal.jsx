@@ -5,6 +5,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import { Clock, Edit, Trash2, X } from "lucide-react";
 import api from "../../api/api";
 import { useNotification } from "../../context/NotificationContext";
+import ConfirmBox from "../ui/ConfirmBox";
 
 const freeTimeSchema = yup.object().shape({
   selectedDay: yup.string().required("Chọn ngày trong tuần"),
@@ -40,6 +41,8 @@ export default function FreeTimeModal({
 }) {
   const { notify } = useNotification();
   const [editingSlotId, setEditingSlotId] = useState(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState(null);
 
   const {
     register,
@@ -89,14 +92,22 @@ export default function FreeTimeModal({
       notify("Đã xảy ra lỗi", "error");
     }
   };
+  const requestDelete = (id) => {
+    setPendingDeleteId(id);
+    setConfirmOpen(true);
+  };
 
-  const handleDelete = async (id) => {
+  const handleConfirmDelete = async () => {
     try {
-      await api.delete(`/free-times/${id}`);
+      await api.delete(`/free-times/${pendingDeleteId}`);
       notify("Xoá thành công", "success");
-      fetchData();
+      onSuccess(); // reload lại danh sách
     } catch (e) {
+      console.error(e);
       notify("Không thể xoá thời gian", "error");
+    } finally {
+      setConfirmOpen(false);
+      setPendingDeleteId(null);
     }
   };
 
@@ -195,42 +206,54 @@ export default function FreeTimeModal({
           <h3 className="text-sm font-medium text-gray-900 mb-3">
             Danh sách thời gian rảnh
           </h3>
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {freeTimeSlots.map((slot) => (
-              <div
-                key={slot.id}
-                className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg"
-              >
-                <div>
-                  <div className="text-sm font-medium text-gray-900">
-                    {Object.keys(dayMap).find(
-                      (k) => dayMap[k] === slot.dayOfWeek
-                    )}
+          {freeTimeSlots.length === 0 ? (
+            <div className="text-sm font-medium text-center text-gray-500">
+              Chưa có phiên học nào
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {freeTimeSlots.map((slot) => (
+                <div
+                  key={slot.id}
+                  className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg"
+                >
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {Object.keys(dayMap).find(
+                        (k) => dayMap[k] === slot.dayOfWeek
+                      )}
+                    </div>
+                    <div className="text-xs text-blue-600">
+                      {slot.startTime} - {slot.endTime}
+                    </div>
                   </div>
-                  <div className="text-xs text-blue-600">
-                    {slot.startTime} - {slot.endTime}
-                  </div>
-                </div>
-                <div>
-                  <button
-                    onClick={() => handleEdit(slot)}
-                    className="text-blue-500 hover:text-blue-700 me-2"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </button>
+                  <div>
+                    <button
+                      onClick={() => handleEdit(slot)}
+                      className="text-blue-500 hover:text-blue-700 me-2"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
 
-                  <button
-                    onClick={() => handleDelete(slot.id)}
-                    className="text-red-500 hover:text-red-700 "
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                    <button
+                      onClick={() => requestDelete(slot.id)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
+      <ConfirmBox
+        open={confirmOpen}
+        message="Bạn có chắc muốn xoá thời gian rảnh này?"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }
