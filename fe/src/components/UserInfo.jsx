@@ -124,7 +124,7 @@ function UserInfo() {
                         Username
                       </p>
                       <p className="text-lg font-semibold text-gray-900">
-                        {userInfo.username}
+                        {userInfo.name}
                       </p>
                     </div>
                   </div>

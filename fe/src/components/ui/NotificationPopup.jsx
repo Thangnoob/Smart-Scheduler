@@ -1,5 +1,10 @@
 import styled, { keyframes } from "styled-components";
-import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
+import {
+  FaCheckCircle,
+  FaTimesCircle,
+  FaExclamationCircle,
+} from "react-icons/fa";
+
 import { useEffect, useState } from "react";
 
 const slideIn = keyframes`
@@ -27,10 +32,27 @@ const PopupContainer = styled.div`
   top: 1.25rem;
   right: 1.25rem;
   background-color: ${(props) =>
-    props.type === "error" ? "#fee2e2" : "#d1fae5"};
-  color: ${(props) => (props.type === "error" ? "#b91c1c" : "#065f46")};
+    props.type === "error"
+      ? "#fee2e2"
+      : props.type === "info"
+      ? "#e0f2fe"
+      : "#d1fae5"};
+
+  color: ${(props) =>
+    props.type === "error"
+      ? "#b91c1c"
+      : props.type === "info"
+      ? "#0c4a6e"
+      : "#065f46"};
+
   border-left: 6px solid
-    ${(props) => (props.type === "error" ? "#dc2626" : "#10b981")};
+    ${(props) =>
+      props.type === "error"
+        ? "#dc2626"
+        : props.type === "info"
+        ? "#0284c7"
+        : "#10b981"};
+
   padding: 1rem 1.25rem;
   border-radius: 0.5rem;
   min-width: 240px;
@@ -54,8 +76,11 @@ const ProgressBar = styled.div`
   left: 0;
   height: 4px;
   background-color: ${(props) =>
-    props.type === "error" ? "#dc2626" : "#10b981"};
-  animation: progress 3s linear forwards;
+    props.type === "error"
+      ? "#dc2626"
+      : props.type === "info"
+      ? "#0284c7"
+      : "#10b981"};
 
   @keyframes progress {
     from {
@@ -84,9 +109,12 @@ const NotificationPopup = ({ message, type = "success", onClose }) => {
     <PopupContainer type={type}>
       {type === "error" ? (
         <FaTimesCircle size={20} />
+      ) : type === "info" ? (
+        <FaExclamationCircle size={20} />
       ) : (
         <FaCheckCircle size={20} />
       )}
+
       <Message>{message}</Message>
       <ProgressBar type={type} />
     </PopupContainer>
