@@ -36,7 +36,10 @@ Smart-Scheduler/
 ## 🔧 Hướng dẫn sử dụng
 
 - Ứng dụng gồm 3 trang chính: Tổng quan, Môn học (Có thể thực hiện thêm xóa sửa môn học), Lịch học (Quản lý thời gian rảnh, Quản lý phiên học, Tạo lịch AI)
-- Để sử dụng tính năng tạo lịch học thông minh bằng AI (đảm bảo là có tối thiểu 1 môn học và 1 khoản thời gian rảnh):
+- Để sử dụng tính năng tạo lịch học thông minh bằng AI:
   - B1: Truy cập trang Lịch học
   - B2: Nhấp vào nút "Tạo lịch AI"
   - B3: Chọn khoản thời gian tạo lịch (vào bao nhiêu ngày tới), lịch sẽ tự động sinh và hiển thị trên lịch học
+- Chú ý: Hiện tại việc tạo lịch AI yêu cầu đảm bảo là có tối thiểu 1 môn học và 1 khoảng thời gian rảnh và sẽ được tính từ ngày hôm sau đến X ngày tới (X sẽ được người dùng chọn).
+
+## 🌐 Demo
