@@ -42,6 +42,14 @@ public class StudySession {
     @Column(name = "is_completed")
     private boolean isCompleted = false;
 
+    //(có thể null nên sử dụng Integer để phân biệt trong data, cũng như so sánh)
+    @Column(name = "actual_minutes")
+    private Integer actualMinutes; // số phút thực tế học
+
+    @Column(name = "completed_pomodoros")
+    private Integer completedPomodoros; // số pomodoro hoàn thành
+
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 

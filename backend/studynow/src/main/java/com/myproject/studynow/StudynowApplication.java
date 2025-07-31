@@ -3,11 +3,11 @@ package com.myproject.studynow;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import java.util.TimeZone;
+
 @SpringBootApplication
 public class StudynowApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(StudynowApplication.class, args);
-	}
+	public static void main(String[] args) { SpringApplication.run(StudynowApplication.class, args); }
 
 }

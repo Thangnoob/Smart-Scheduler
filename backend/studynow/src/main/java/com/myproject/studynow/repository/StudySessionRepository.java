@@ -9,9 +9,11 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface StudySessionRepository extends JpaRepository<StudySession, Long> {
+    Optional<StudySession> findByIdAndUserId(Long id, Long userId);
 
     List<StudySession> findByUserId(Long userId);
 
@@ -24,4 +26,5 @@ public interface StudySessionRepository extends JpaRepository<StudySession, Long
                                                        @Param("start") LocalDateTime start,
                                                        @Param("end") LocalDateTime end);
 
+    List<StudySession> findByUserIdAndIsCompletedTrue(Long userId);
 }

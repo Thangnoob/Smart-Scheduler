@@ -1,23 +1,23 @@
 package com.myproject.studynow.service.impl;
 
-import com.myproject.studynow.dto.StudySessionDTO;
+import com.myproject.studynow.dto.*;
 import com.myproject.studynow.entity.*;
+import com.myproject.studynow.exception.StudySessionNotFoundException;
 import com.myproject.studynow.repository.StudySessionRepository;
 import com.myproject.studynow.repository.SubjectRepository;
 import com.myproject.studynow.repository.FreeTimeRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.myproject.studynow.repository.UserRepository;
 import com.myproject.studynow.service.StudySessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -34,6 +34,7 @@ public class StudySessionServiceImpl implements StudySessionService {
     private final StudySessionRepository studySessionRepository;
     private final SubjectRepository subjectRepository;
     private final FreeTimeRepository freeTimeRepository;
+    private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
 
@@ -46,6 +47,64 @@ public class StudySessionServiceImpl implements StudySessionService {
     @Value("${openai.model:gemini-2.0-flash}")
     private String openaiModel;
 
+    @Override
+    public StudySession createStudySession(Long userId, StudySessionRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Subject subject = subjectRepository.findById(request.getSubjectId())
+                .orElseThrow(() -> new RuntimeException("Subject not found"));
+
+        StudySession session = new StudySession();
+        session.setUser(user);
+        session.setSubject(subject);
+        session.setStartTime(request.getStartTime());
+        session.setEndTime(request.getEndTime());
+        session.setDuration(request.getDuration());
+        session.setCompleted(false);
+
+        return studySessionRepository.save(session);
+    }
+
+    @Override
+    public StudySession updateStudySession(Long id, Long userId, StudySessionRequest request) {
+        StudySession existingSession = studySessionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("StudySession not found"));
+
+        if (!existingSession.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Access denied");
+        }
+
+        Subject subject = subjectRepository.findById(request.getSubjectId())
+                .orElseThrow(() -> new RuntimeException("Subject not found"));
+
+        existingSession.setSubject(subject);
+        existingSession.setStartTime(request.getStartTime());
+        existingSession.setEndTime(request.getEndTime());
+        existingSession.setDuration(request.getDuration());
+
+        return studySessionRepository.save(existingSession);
+    }
+
+    @Override
+    public void deleteStudySession(Long id, Long userId) {
+        StudySession existingSession = studySessionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("StudySession not found"));
+
+        if (!existingSession.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Access denied");
+        }
+
+        studySessionRepository.delete(existingSession);
+    }
+
+    @Override
+    public StudySession getStudySessionByUserAndId(Long userId, Long sessionId) {
+        return studySessionRepository.findByIdAndUserId(sessionId, userId)
+                .orElseThrow(() -> new RuntimeException("StudySession not found or access denied"));
+    }
+
+    @Override
     public List<StudySession> getStudySessionByUserId(Long userId) {
         return studySessionRepository.findByUserId(userId);
     }
@@ -64,9 +123,125 @@ public class StudySessionServiceImpl implements StudySessionService {
         return studySessionRepository.findByUserIdAndStartTimeBetween(userId, startOfWeek, endOfWeek);
     }
 
+    @Override
+    public List<StudySession> getStudySessionsForWeek(Long userId, LocalDate baseDate, int offset) {
+        LocalDate startOfWeek = baseDate.with(DayOfWeek.MONDAY).plusWeeks(offset);
+        LocalDate endOfWeek = startOfWeek.plusDays(6);
+
+        LocalDateTime startDateTime = startOfWeek.atStartOfDay();
+        LocalDateTime endDateTime = endOfWeek.atTime(23, 59, 59);
+
+        return studySessionRepository.findByUserIdAndStartTimeBetween(userId, startDateTime, endDateTime);
+    }
+
+    public List<StudySession> getTodayStudySessions(Long userId) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startOfDay = now.toLocalDate().atStartOfDay(); // 00:00 hôm nay
+        LocalDateTime endOfDay = now.toLocalDate().atTime(23, 59, 59); // 23:59:59 hôm nay
+
+        return studySessionRepository.findByUserIdAndStartTimeBetween(userId, startOfDay, endOfDay);
+    }
+
+
+    @Override
+    public List<StudySession> getCompletedSessionsByUser(Long userId) {
+        return studySessionRepository.findByUserIdAndIsCompletedTrue(userId);
+    }
+
+
+    @Override
+    public PomodoroStartResponse startSession(Long sessionId, Long userId) {
+        StudySession session = studySessionRepository.findById(sessionId)
+                .orElseThrow(() -> new StudySessionNotFoundException("Study session not found"));
+
+        if (!session.getUser().getId().equals(userId)) {
+            throw new RuntimeException("You are not the owner of this session");
+        }
+
+        if (session.isCompleted()) {
+            throw new RuntimeException("This session is already completed");
+        }
+
+        if (LocalDateTime.now().isAfter(session.getEndTime())) {
+            session.setCompleted(true);
+            studySessionRepository.save(session);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phiên học đã hết hạn, không thể bắt đầu");
+        }
+
+        int duration = session.getDuration(); // tổng thời lượng phiên học
+        int pomodoroDuration = 25; // mỗi Pomodoro 25 phút
+        int shortBreak = 5;        // nghỉ ngắn 5 phút
+        int longBreak = 15;        // nghỉ dài nếu cần (chưa áp dụng)
+
+
+        int totalPomodoros = 0;
+        int totalUsedMinutes = 0;
+
+        while (true) {
+            int nextPomodoroMinutes = (totalPomodoros + 1) * pomodoroDuration;
+            int nextBreakMinutes = totalPomodoros * shortBreak; // break sau mỗi pomodoro trừ cái cuối
+            int nextTotal = nextPomodoroMinutes + nextBreakMinutes;
+
+            if (nextTotal <= duration) {
+                totalPomodoros++;
+                totalUsedMinutes = nextTotal;
+            } else {
+                break;
+            }
+        }
+
+//        if (totalPomodoros == 0) {
+//            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+//                    "Thời lượng quá ngắn để áp dụng Pomodoro (tối thiểu khoảng 25 phút)");
+//        }
+
+        int remainingMinutes = duration - totalUsedMinutes;
+
+        return new PomodoroStartResponse(
+                session.getId(),
+                session.getSubject().getName(),
+                duration,
+                pomodoroDuration,
+                shortBreak,
+                longBreak,
+                totalPomodoros,
+                remainingMinutes
+        );
+
+    }
+
+
+    @Override
+    public CompleteSessionResponse completeSession(Long sessionId, Long userId, CompleteSessionRequest request) {
+        StudySession session = studySessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Study session not found"));
+
+        if (!session.getUser().getId().equals(userId)) {
+            throw new RuntimeException("You are not the owner of this session");
+        }
+
+        session.setCompleted(true);
+        session.setActualMinutes(request.getActualMinutes());
+        session.setCompletedPomodoros(request.getCompletedPomodoros());
+        studySessionRepository.save(session);
+
+        double efficiency = (request.getActualMinutes() * 100.0) / session.getDuration();
+
+        return new CompleteSessionResponse(
+                "Study session completed",
+                session.getId(),
+                session.getDuration(),
+                session.getActualMinutes(),
+                session.getCompletedPomodoros(),
+                efficiency
+        );
+    }
+
+
     /**
      * Tạo study sessions cho user dựa trên subjects và free times
      */
+    @Override
     @Transactional
     public List<StudySession> generateStudySessionsForUser(Long userId, int daysAhead) {
         try {

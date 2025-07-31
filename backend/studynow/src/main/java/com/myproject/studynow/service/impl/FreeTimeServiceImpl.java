@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -151,4 +152,10 @@ public class FreeTimeServiceImpl implements FreeTimeService {
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return currentUser.getId();
     }
+
+    @Override
+    public boolean existsFreeTimeBetween(Long userId, LocalDateTime start, LocalDateTime end) {
+        return freeTimeRepository.existsByUserIdAndStartTimeBetween(userId, start.toLocalTime(), end.toLocalTime());
+    }
+
 }
