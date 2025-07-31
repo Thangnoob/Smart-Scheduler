@@ -120,18 +120,14 @@ public class StudySessionController {
 
         Long userId = getCurrentUserId();
 
-        // Lấy thời gian hiện tại và thời gian kết thúc
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime end = now.plusDays(daysAhead);
-
         // Kiểm tra free time
-        boolean hasFreeTime = freeTimeService.existsFreeTimeBetween(userId, now, end);
-        if (!hasFreeTime) {
-            return ResponseEntity.badRequest().body("Không có thời gian rảnh trong khoảng " + daysAhead + " ngày tới.");
+        boolean hasFreeTime = freeTimeService.getAllFreeTimeByUserId(userId).isEmpty();
+        if (hasFreeTime) {
+            return ResponseEntity.badRequest().body("Không tìm thấy thời gian rảnh trong tuần.");
         }
 
-        List<Subject> lists = subjectService.getAllSubjects(userId);
-        if (lists.isEmpty()) {
+        boolean hasSubject = subjectService.getAllSubjects(userId).isEmpty();
+        if (hasSubject) {
             return ResponseEntity.badRequest().body("Không thể tạo lịch do thiếu môn học.");
         }
 
