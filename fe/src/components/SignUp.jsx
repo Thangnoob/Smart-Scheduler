@@ -219,10 +219,7 @@ function SignUp() {
   return (
     <Wrapper>
       <Left>
-        <img
-          src="https://placehold.co/800x/667fff/ffffff.png?text=Your+Image&font=Montserrat"
-          alt="Login Illustration"
-        />
+        <img src="/images/login-image.jpg" alt="Login Illustration" />
       </Left>
       <Right>
         <FormWrapper>

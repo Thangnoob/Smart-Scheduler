@@ -66,15 +66,15 @@ function UserInfo() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-5 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            User Profile
+            Hồ sơ cá nhân
           </h1>
           <p className="text-gray-600">
-            Manage your account information and settings
+            Hiển thị thông tin tài khoản người dùng
           </p>
         </div>
 
@@ -99,7 +99,7 @@ function UserInfo() {
                   <div className="w-24 h-24 bg-white rounded-full shadow-lg flex items-center justify-center border-4 border-white">
                     <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
                       <span className="text-2xl font-bold text-white">
-                        {getInitials(userInfo.username)}
+                        {getInitials(userInfo.name)}
                       </span>
                     </div>
                   </div>
@@ -108,7 +108,7 @@ function UserInfo() {
                 {/* User Details */}
                 <div className="text-center mb-6">
                   <h2 className="text-2xl font-bold text-gray-900 mb-1">
-                    {userInfo.username}
+                    {userInfo.name}
                   </h2>
                   <p className="text-gray-600">{userInfo.email}</p>
                 </div>
@@ -170,14 +170,6 @@ function UserInfo() {
                   Quick Actions
                 </h3>
                 <div className="space-y-3">
-                  <button className="w-full flex items-center justify-center px-4 py-3 bg-indigo-50 text-indigo-700 rounded-xl hover:bg-indigo-100 transition-colors duration-200 font-medium">
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit Profile
-                  </button>
-                  <button className="w-full flex items-center justify-center px-4 py-3 bg-gray-50 text-gray-700 rounded-xl hover:bg-gray-100 transition-colors duration-200 font-medium">
-                    <Settings className="w-4 h-4 mr-2" />
-                    Settings
-                  </button>
                   <button
                     onClick={handleLogout}
                     className="w-full flex items-center justify-center px-4 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors duration-200 font-medium shadow-md hover:shadow-lg"

@@ -7,6 +7,12 @@ import { useNotification } from "../../context/NotificationContext";
 import { Edit, Trash2, X } from "lucide-react";
 import ConfirmBox from "../../components/ui/ConfirmBox";
 
+const priorityColor = {
+  HIGH: "red",
+  MEDIUM: "amber",
+  LOW: "green",
+};
+
 const studySessionSchema = yup.object().shape({
   subjectId: yup.string().required("Vui lòng chọn môn học"),
   startTime: yup.date().required("Chọn thời gian bắt đầu"),
@@ -173,7 +179,11 @@ export default function StudySessionModal({ isOpen, onClose, onSuccess }) {
               <option value="">-- Chọn môn học --</option>
               {subjects.map((subject) => (
                 <option key={subject.id} value={subject.id}>
-                  {subject.name}
+                  <span
+                    className={`text-${priorityColor[subject.priority]}-500`}
+                  >
+                    {subject.name}
+                  </span>
                 </option>
               ))}
             </select>
