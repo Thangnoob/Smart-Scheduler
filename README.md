@@ -8,7 +8,7 @@
 - ✅ Sinh lịch học tự động sử dụng AI
 - ✅ Đồng hồ Pomodoro tập trung
 - ✅ Chỉnh sửa lịch học trực quan
-- ✅ Giao diện hiện đại, responsive
+- ✅ Giao diện đơn giản, responsive
 
 ## 🖥️ Tech Stack
 
