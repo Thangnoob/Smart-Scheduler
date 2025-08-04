@@ -22,8 +22,11 @@
 ## 📦 Cấu trúc thư mục
 
 Smart-Scheduler/
+
 ├── backend/ # Spring Boot REST API
+
 ├── frontend/ # React + Vite client
+
 ├── README.md
 
 ## Các API chính
